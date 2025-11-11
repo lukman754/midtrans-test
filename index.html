@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRIS Midtrans Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px; }
+        #qr-container { margin-top: 20px; }
+        #qr-image { max-width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>QRIS Midtrans Test</h1>
+    <div class="container">
+        <label for="amount">Amount (IDR):</label>
+        <input type="number" id="amount" value="10000" min="1">
+        <button onclick="createQris()">Create QRIS</button>
+    </div>
+    <div id="result"></div>
+    <div id="qr-container" style="display: none;">
+        <h2>Scan QR Code</h2>
+        <img id="qr-image" alt="QRIS Code">
+    </div>
+
+    <script>
+        async function createQris() {
+            const amount = document.getElementById('amount').value;
+            const resultDiv = document.getElementById('result');
+            const qrContainer = document.getElementById('qr-container');
+            const qrImage = document.getElementById('qr-image');
+
+            resultDiv.textContent = 'Creating QRIS...';
+
+            try {
+                const response = await fetch('/api/create-qris', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ amount: parseInt(amount) }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.textContent = `Order ID: ${data.order_id}`;
+                    if (data.actions && data.actions[0] && data.actions[0].url) {
+                        qrImage.src = data.actions[0].url;
+                        qrContainer.style.display = 'block';
+                    } else {
+                        resultDiv.textContent += ' - QR URL not found in response';
+                    }
+                } else {
+                    resultDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
+                    qrContainer.style.display = 'none';
+                }
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                qrContainer.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
