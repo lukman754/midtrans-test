@@ -45,16 +45,21 @@
 
                 const data = await response.json();
 
-                if (response.ok) {
+                if (response.ok && data.status_code === '200') {
                     resultDiv.textContent = `Order ID: ${data.order_id}`;
-                    if (data.actions && data.actions[0] && data.actions[0].url) {
+                    if (data.qr_string) {
+                        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.qr_string)}`;
+                        qrContainer.style.display = 'block';
+                    } else if (data.actions && data.actions[0] && data.actions[0].url) {
                         qrImage.src = data.actions[0].url;
                         qrContainer.style.display = 'block';
                     } else {
-                        resultDiv.textContent += ' - QR URL not found in response';
+                        resultDiv.textContent += ' - QR not available in response';
+                        qrContainer.style.display = 'none';
                     }
                 } else {
-                    resultDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
+                    const errorMsg = data.status_message || data.error || 'Unknown error';
+                    resultDiv.textContent = `Error: ${errorMsg}`;
                     qrContainer.style.display = 'none';
                 }
             } catch (error) {
