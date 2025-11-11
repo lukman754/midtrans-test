@@ -1,25 +1,11 @@
 // api/create-qris.js
-// Vercel Serverless Function (Node 18+). Uses global fetch.
-
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-    if (!SERVER_KEY) {
-      return res.status(500).json({ error: 'MIDTRANS_SERVER_KEY not configured' });
-    }
+    const MERCHANT_ID = process.env.MIDTRANS_MERCHANT_ID || 'G441398097'; // fallback jika belum di-setup
+    if (!SERVER_KEY) return res.status(500).json({ error: 'MIDTRANS_SERVER_KEY not configured' });
 
     const { amount = 10000, order_id } = req.body || {};
     const orderId = order_id || `qris-${Math.floor(Math.random()*100000)}-${Date.now()}`;
@@ -30,7 +16,8 @@ export default async function handler(req, res) {
         order_id: orderId,
         gross_amount: Number(amount)
       },
-      // acquirer optional — Midtrans will choose default if not specified
+      // tambahkan merchant_id jika Midtrans butuh
+      merchant_id: MERCHANT_ID,
       qris: {},
       customer_details: {
         first_name: 'Pembeli',
@@ -39,6 +26,8 @@ export default async function handler(req, res) {
     };
 
     const basicAuth = 'Basic ' + Buffer.from(SERVER_KEY + ':').toString('base64');
+
+    console.log('-> Request body to Midtrans:', JSON.stringify(body));
 
     const resp = await fetch('https://api.sandbox.midtrans.com/v2/charge', {
       method: 'POST',
@@ -51,8 +40,9 @@ export default async function handler(req, res) {
     });
 
     const data = await resp.json();
+    console.log('<- Midtrans response status:', resp.status, 'body:', JSON.stringify(data));
 
-    // Forward response to client
+    // return raw response ke client (untuk debugging)
     return res.status(resp.status).json(data);
   } catch (err) {
     console.error('create-qris error:', err);
